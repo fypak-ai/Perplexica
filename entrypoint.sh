@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+# Railway injects $PORT; default to 3000 if not set
+export PORT=${PORT:-3000}
+export HOSTNAME=0.0.0.0
+
 echo "Starting SearXNG..."
 
 sudo -H -u searxng bash -c "cd /usr/local/searxng/searxng-src && export SEARXNG_SETTINGS_PATH='/etc/searxng/settings.yml' && export FLASK_APP=searx/webapp.py && /usr/local/searxng/searx-pyenv/bin/python -m flask run --host=0.0.0.0 --port=8080" &
@@ -27,6 +31,6 @@ else
 fi
 
 cd /home/perplexica
-echo "Starting Perplexica..."
+echo "Starting Perplexica on port $PORT..."
 
 exec node server.js
