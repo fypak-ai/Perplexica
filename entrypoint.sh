@@ -1,13 +1,15 @@
 #!/bin/sh
 set -e
 
-# Railway injects $PORT; default to 3000 if not set
-export PORT=${PORT:-3000}
+# Railway injects $PORT for the public-facing service
+# SearxNG runs internally on 4000 (never exposed to Railway)
 export HOSTNAME=0.0.0.0
+export SEARXNG_INTERNAL_PORT=4000
+export SEARXNG_API_URL=http://localhost:${SEARXNG_INTERNAL_PORT}
 
-echo "Starting SearXNG..."
+echo "Starting SearXNG on internal port $SEARXNG_INTERNAL_PORT..."
 
-sudo -H -u searxng bash -c "cd /usr/local/searxng/searxng-src && export SEARXNG_SETTINGS_PATH='/etc/searxng/settings.yml' && export FLASK_APP=searx/webapp.py && /usr/local/searxng/searx-pyenv/bin/python -m flask run --host=0.0.0.0 --port=8080" &
+sudo -H -u searxng bash -c "cd /usr/local/searxng/searxng-src && export SEARXNG_SETTINGS_PATH='/etc/searxng/settings.yml' && export FLASK_APP=searx/webapp.py && /usr/local/searxng/searx-pyenv/bin/python -m flask run --host=0.0.0.0 --port=$SEARXNG_INTERNAL_PORT" &
 SEARXNG_PID=$!
 
 echo "Waiting for SearXNG to be ready..."
@@ -15,7 +17,7 @@ sleep 5
 
 COUNTER=0
 MAX_TRIES=30
-until curl -s http://localhost:8080 > /dev/null 2>&1; do
+until curl -s http://localhost:${SEARXNG_INTERNAL_PORT} > /dev/null 2>&1; do
   COUNTER=$((COUNTER+1))
   if [ $COUNTER -ge $MAX_TRIES ]; then
     echo "Warning: SearXNG health check timeout, but continuing..."
@@ -24,7 +26,7 @@ until curl -s http://localhost:8080 > /dev/null 2>&1; do
   sleep 1
 done
 
-if curl -s http://localhost:8080 > /dev/null 2>&1; then
+if curl -s http://localhost:${SEARXNG_INTERNAL_PORT} > /dev/null 2>&1; then
   echo "SearXNG started successfully (PID: $SEARXNG_PID)"
 else
   echo "SearXNG may not be fully ready, but continuing (PID: $SEARXNG_PID)"
